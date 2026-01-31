@@ -7,7 +7,7 @@ type CardRow = {
   id: string;
   word: string;
   part_of_speech: string | null;
-  definition: string;
+  definitions: string[];
   example: string | null;
   synonyms: any | null;
   due_at: string;
@@ -65,6 +65,14 @@ export default function Page() {
   const [tab, setTab] = useState<"add" | "review" | "bank">("add");
   const [reviewIndex, setReviewIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [reviewMode, setReviewMode] = useState<"due" | "random">("due");
+
+
+  const [editingCard, setEditingCard] = useState<any | null>(null);
+  const [editDefinition, setEditDefinition] = useState("");
+  const [editDefinitions, setEditDefinitions] = useState<string[]>([]);
+  const [editExample, setEditExample] = useState("");
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -160,10 +168,70 @@ export default function Page() {
     await refreshCards();
   }
 
+function startEdit(card: CardRow) {
+  setEditingCard(card);
+  setEditDefinitions(
+    (card.definitions && card.definitions.length > 0)
+      ? card.definitions
+      : [""]
+  );
+  setEditExample(card.example ?? "");
+}
+
+async function saveEdits() {
+  if (!editingCard) return;
+
+  const cleaned = editDefinitions
+    .map(d => d.trim())
+    .filter(Boolean);
+
+  if (cleaned.length === 0) {
+    alert("Please enter at least one definition.");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("cards")
+    .update({
+      definitions: cleaned,
+      example: editExample.trim() || null,
+    })
+    .eq("id", editingCard.id);
+
+  if (error) {
+    setStatus(error.message);
+    return;
+  }
+
+  setStatus("Updated ✅");
+  setEditingCard(null);
+  await refreshCards();
+}
+
+
+async function deleteCard(id: string) {
+  const ok = confirm("Delete this word?");
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from("cards")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    setStatus(error.message);
+    return;
+  }
+
+  setStatus("Deleted");
+  await refreshCards();
+}
+
+
   if (!session) {
     return (
-      <main style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800 }}>Vocab Bank</h1>
+      <main style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "Geramond" }}>
+        <h1 style={{ fontSize: 140, fontWeight: 800 }}>Word Bank</h1>
         <p style={{ opacity: 0.8 }}>Log in once and your words sync to laptop + phone.</p>
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <input
@@ -180,10 +248,10 @@ export default function Page() {
   }
 
   return (
-    <main style={{ maxWidth: 860, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
+    <main style={{ maxWidth: 860, margin: "40px auto", padding: 16, fontFamily: "Geramond" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Vocab Bank</h1>
+          <h1 style={{ fontSize: 140, fontWeight: 800, margin: 0 }}>Word Bank</h1>
           <div style={{ opacity: 0.7, marginTop: 6 }}>
             {cards.length} saved • {dueCards.length} due
           </div>
@@ -203,6 +271,79 @@ export default function Page() {
         </button>
         <span style={{ padding: "8px 10px", opacity: 0.8 }}>{status}</span>
       </div>
+
+      {editingCard && (
+        <div className="border rounded-lg p-4 space-y-3 mt-6">
+          <div className="font-semibold">
+            Editing: {editingCard.word}
+          </div>
+
+          {/* Definitions */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Definitions</div>
+
+            {editDefinitions.map((d, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <textarea
+                  className="w-full border rounded p-2"
+                  rows={2}
+                  value={d}
+                  onChange={(e) => {
+                    const copy = [...editDefinitions];
+                    copy[i] = e.target.value;
+                    setEditDefinitions(copy);
+                  }}
+                  placeholder={`Definition ${i + 1}`}
+                />
+
+                <button
+                  className="px-2 py-1 text-sm border rounded"
+                  onClick={() => {
+                    const copy = [...editDefinitions];
+                    copy.splice(i, 1);
+                    setEditDefinitions(copy.length ? copy : [""]);
+                  }}
+                  title="Remove definition"
+                >
+                  –
+                </button>
+              </div>
+            ))}
+
+            <button
+              className="px-3 py-1 border rounded text-sm"
+              onClick={() => setEditDefinitions([...editDefinitions, ""])}
+            >
+              + Add definition
+            </button>
+          </div>
+
+          {/* Example */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Example (optional)</div>
+            <textarea
+              className="w-full border rounded p-2"
+              rows={2}
+              value={editExample}
+              onChange={(e) => setEditExample(e.target.value)}
+              placeholder="Paste the sentence you saw it in…"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button className="px-3 py-1 border rounded" onClick={saveEdits}>
+              Save
+            </button>
+            <button
+              className="px-3 py-1 text-muted-foreground"
+              onClick={() => setEditingCard(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {tab === "add" && (
         <section style={{ marginTop: 16 }}>
@@ -242,7 +383,7 @@ export default function Page() {
             const c = currentReviewCard();
             if (!c) return <div style={{ opacity: 0.8 }}>Nothing due 🎉</div>;
             return (
-              <div style={{ border: "1px solid #e5e5e5", borderRadius: 14, padding: 14 }}>
+              <div style={{ border: "1px solid #F6F4F0", borderRadius: 14, padding: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ fontSize: 22, fontWeight: 800 }}>{c.word}</div>
                   <div style={{ opacity: 0.7 }}>{c.part_of_speech ?? "—"}</div>
@@ -252,7 +393,7 @@ export default function Page() {
                   <div style={{ marginTop: 12, opacity: 0.8 }}>Tap reveal.</div>
                 ) : (
                   <>
-                    <div style={{ marginTop: 12 }}>{c.definition}</div>
+                    <div style={{ marginTop: 12 }}>{c.definitions}</div>
                     {c.example && <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.85 }}>“{c.example}”</div>}
                   </>
                 )}
@@ -266,18 +407,53 @@ export default function Page() {
             );
           })()}
         </section>
+
       )}
 
       {tab === "bank" && (
-        <section style={{ marginTop: 16, display: "grid", gap: 10 }}>
+        <section style={{ marginTop: 16, display: "grid", gap: 10}}>
           {cards.map((c) => (
-            <div key={c.id} style={{ border: "1px solid #e5e5e5", borderRadius: 14, padding: 12 }}>
-              <div style={{ fontWeight: 800 }}>
-                {c.word} <span style={{ opacity: 0.7, fontWeight: 500 }}>{c.part_of_speech ? `(${c.part_of_speech})` : ""}</span>
+            <div key={c.id} className="border rounded-lg p-3 space-y-2">
+              <div className="flex justify-between items-start gap-4">
+                <div>
+                  <div className="font-semibold text-lg">{c.word}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {c.part_of_speech}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    className="text-sm underline"
+                    onClick={() => startEdit(c)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    className="text-sm text-red-600 underline"
+                    onClick={() => deleteCard(c.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-              <div style={{ marginTop: 6 }}>{c.definition}</div>
+
+              <ul style={{ paddingLeft: 18 }}>
+                {c.definitions.map((d: string, i: number) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+
+
+              {c.example && (
+                <div className="italic text-sm text-muted-foreground">
+                  “{c.example}”
+                </div>
+              )}
             </div>
           ))}
+
         </section>
       )}
     </main>
