@@ -7,7 +7,7 @@ type CardRow = {
   id: string;
   word: string;
   part_of_speech: string | null;
-  definitions: string[];
+  definition: string;
   example: string | null;
   synonyms: any | null;
   due_at: string;
@@ -65,12 +65,9 @@ export default function Page() {
   const [tab, setTab] = useState<"add" | "review" | "bank">("add");
   const [reviewIndex, setReviewIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [reviewMode, setReviewMode] = useState<"due" | "random">("due");
-
 
   const [editingCard, setEditingCard] = useState<any | null>(null);
   const [editDefinition, setEditDefinition] = useState("");
-  const [editDefinitions, setEditDefinitions] = useState<string[]>([]);
   const [editExample, setEditExample] = useState("");
 
 
@@ -168,33 +165,20 @@ export default function Page() {
     await refreshCards();
   }
 
-function startEdit(card: CardRow) {
+function startEdit(card: any) {
   setEditingCard(card);
-  setEditDefinitions(
-    (card.definitions && card.definitions.length > 0)
-      ? card.definitions
-      : [""]
-  );
+  setEditDefinition(card.definition);
   setEditExample(card.example ?? "");
 }
 
 async function saveEdits() {
   if (!editingCard) return;
 
-  const cleaned = editDefinitions
-    .map(d => d.trim())
-    .filter(Boolean);
-
-  if (cleaned.length === 0) {
-    alert("Please enter at least one definition.");
-    return;
-  }
-
   const { error } = await supabase
     .from("cards")
     .update({
-      definitions: cleaned,
-      example: editExample.trim() || null,
+      definition: editDefinition,
+      example: editExample || null,
     })
     .eq("id", editingCard.id);
 
@@ -207,7 +191,6 @@ async function saveEdits() {
   setEditingCard(null);
   await refreshCards();
 }
-
 
 async function deleteCard(id: string) {
   const ok = confirm("Delete this word?");
@@ -278,62 +261,30 @@ async function deleteCard(id: string) {
             Editing: {editingCard.word}
           </div>
 
-          {/* Definitions */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Definitions</div>
+          <textarea
+            className="w-full border rounded p-2"
+            rows={3}
+            value={editDefinition}
+            onChange={(e) => setEditDefinition(e.target.value)}
+            placeholder="Edit definition"
+          />
 
-            {editDefinitions.map((d, i) => (
-              <div key={i} className="flex gap-2 items-start">
-                <textarea
-                  className="w-full border rounded p-2"
-                  rows={2}
-                  value={d}
-                  onChange={(e) => {
-                    const copy = [...editDefinitions];
-                    copy[i] = e.target.value;
-                    setEditDefinitions(copy);
-                  }}
-                  placeholder={`Definition ${i + 1}`}
-                />
-
-                <button
-                  className="px-2 py-1 text-sm border rounded"
-                  onClick={() => {
-                    const copy = [...editDefinitions];
-                    copy.splice(i, 1);
-                    setEditDefinitions(copy.length ? copy : [""]);
-                  }}
-                  title="Remove definition"
-                >
-                  –
-                </button>
-              </div>
-            ))}
-
-            <button
-              className="px-3 py-1 border rounded text-sm"
-              onClick={() => setEditDefinitions([...editDefinitions, ""])}
-            >
-              + Add definition
-            </button>
-          </div>
-
-          {/* Example */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium">Example (optional)</div>
-            <textarea
-              className="w-full border rounded p-2"
-              rows={2}
-              value={editExample}
-              onChange={(e) => setEditExample(e.target.value)}
-              placeholder="Paste the sentence you saw it in…"
-            />
-          </div>
+          <textarea
+            className="w-full border rounded p-2"
+            rows={2}
+            value={editExample}
+            onChange={(e) => setEditExample(e.target.value)}
+            placeholder="Add your own example sentence"
+          />
 
           <div className="flex gap-2">
-            <button className="px-3 py-1 border rounded" onClick={saveEdits}>
+            <button
+              className="px-3 py-1 border rounded"
+              onClick={saveEdits}
+            >
               Save
             </button>
+
             <button
               className="px-3 py-1 text-muted-foreground"
               onClick={() => setEditingCard(null)}
@@ -393,7 +344,7 @@ async function deleteCard(id: string) {
                   <div style={{ marginTop: 12, opacity: 0.8 }}>Tap reveal.</div>
                 ) : (
                   <>
-                    <div style={{ marginTop: 12 }}>{c.definitions}</div>
+                    <div style={{ marginTop: 12 }}>{c.definition}</div>
                     {c.example && <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.85 }}>“{c.example}”</div>}
                   </>
                 )}
@@ -407,13 +358,12 @@ async function deleteCard(id: string) {
             );
           })()}
         </section>
-
       )}
 
       {tab === "bank" && (
-        <section style={{ marginTop: 16, display: "grid", gap: 10}}>
+        <section style={{ marginTop: 16, display: "grid", gap: 10 }}>
           {cards.map((c) => (
-            <div key={c.id} className="border rounded-lg p-3 space-y-2">
+            <div key={c.id} className="border rounded-lg p-4 space-y-2">
               <div className="flex justify-between items-start gap-4">
                 <div>
                   <div className="font-semibold text-lg">{c.word}</div>
@@ -439,12 +389,7 @@ async function deleteCard(id: string) {
                 </div>
               </div>
 
-              <ul style={{ paddingLeft: 18 }}>
-                {c.definitions.map((d: string, i: number) => (
-                  <li key={i}>{d}</li>
-                ))}
-              </ul>
-
+              <div>{c.definition}</div>
 
               {c.example && (
                 <div className="italic text-sm text-muted-foreground">
