@@ -63,13 +63,24 @@ export default function Page() {
   const [meanings, setMeanings] = useState<Meaning[]>([]);
   const [cards, setCards] = useState<CardRow[]>([]);
   const [tab, setTab] = useState<"add" | "review" | "bank">("add");
-  const [reviewIndex, setReviewIndex] = useState(0);
-  const [revealed, setRevealed] = useState(false);
 
+  // For Editing / Removing Definitions
   const [editingCard, setEditingCard] = useState<any | null>(null);
   const [editDefinition, setEditDefinition] = useState("");
   const [editExample, setEditExample] = useState("");
 
+  // For Review
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const [reviewMode, setReviewMode] = useState<"due" | "random">("due");
+
+  // For Test Modes
+  const [testMode, setTestMode] = useState<"flashcard" | "type" | "mcq">("flashcard");
+  const [typed, setTyped] = useState("");
+  const [mcqOptions, setMcqOptions] = useState<CardRow[]>([]);
+  const [mcqChoiceId, setMcqChoiceId] = useState<string | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [mcqResult, setMcqResult] = useState<"correct" | "wrong" | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -135,9 +146,25 @@ export default function Page() {
   }
 
   function currentReviewCard() {
-    if (!dueCards.length) return null;
-    return dueCards[Math.min(reviewIndex, dueCards.length - 1)];
+    if (!activeCardId) return null;
+    return cards.find((c) => c.id === activeCardId) ?? null;
   }
+
+  function pickNextCardId() {
+  if (reviewMode === "due") {
+    if (!dueCards.length) return null;
+    const c = dueCards[Math.min(reviewIndex, dueCards.length - 1)];
+    return c?.id ?? null;
+  } else {
+    if (!cards.length) return null;
+    const c = cards[Math.floor(Math.random() * cards.length)];
+    return c?.id ?? null;
+  }
+}
+
+function nextQuestion() {
+  setReviewIndex((i) => i + 1);
+}
 
   async function mark(correct: boolean) {
     const c = currentReviewCard();
@@ -161,7 +188,9 @@ export default function Page() {
 
     setStatus(error ? error.message : correct ? `Nice — due in ${days}d` : "Again soon");
     setRevealed(false);
-    setReviewIndex(0);
+    setMcqChoiceId(null);
+    setMcqResult(null);
+    nextQuestion();
     await refreshCards();
   }
 
@@ -177,8 +206,8 @@ async function saveEdits() {
   const { error } = await supabase
     .from("cards")
     .update({
-      definition: editDefinition,
-      example: editExample || null,
+      definition: editDefinition.trim(),
+      example: editExample.trim() || null,
     })
     .eq("id", editingCard.id);
 
@@ -207,13 +236,36 @@ async function deleteCard(id: string) {
   }
 
   setStatus("Deleted");
+  setEditingCard(null);
   await refreshCards();
 }
 
+function buildMcqOptions(correct: CardRow) {
+  const pool = cards.filter(c => c.id !== correct.id);
+  const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+  const opts = [correct, ...shuffled].sort(() => Math.random() - 0.5);
+  setMcqOptions(opts);
+  setMcqChoiceId(null);
+}
+
+useEffect(() => {
+  setTyped("");
+  setMcqOptions([]);
+  setMcqChoiceId(null);
+  setMcqResult(null);
+  setRevealed(false);
+
+  const nextId = pickNextCardId();
+  setActiveCardId(nextId);
+
+  const c = nextId ? cards.find((x) => x.id === nextId) : null;
+  if (c && testMode === "mcq") buildMcqOptions(c);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [reviewIndex, reviewMode, testMode, cards.length, dueCards.length]);
 
   if (!session) {
     return (
-      <main style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "Geramond" }}>
+      <main style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "Garamond" }}>
         <h1 style={{ fontSize: 140, fontWeight: 800 }}>Word Bank</h1>
         <p style={{ opacity: 0.8 }}>Log in once and your words sync to laptop + phone.</p>
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -231,7 +283,7 @@ async function deleteCard(id: string) {
   }
 
   return (
-    <main style={{ maxWidth: 860, margin: "40px auto", padding: 16, fontFamily: "Geramond" }}>
+    <main style={{ maxWidth: 860, margin: "40px auto", padding: 16, fontFamily: "Garamond" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 140, fontWeight: 800, margin: 0 }}>Word Bank</h1>
@@ -255,46 +307,58 @@ async function deleteCard(id: string) {
         <span style={{ padding: "8px 10px", opacity: 0.8 }}>{status}</span>
       </div>
 
-      {editingCard && (
-        <div className="border rounded-lg p-4 space-y-3 mt-6">
-          <div className="font-semibold">
-            Editing: {editingCard.word}
-          </div>
-
-          <textarea
-            className="w-full border rounded p-2"
-            rows={3}
-            value={editDefinition}
-            onChange={(e) => setEditDefinition(e.target.value)}
-            placeholder="Edit definition"
-          />
-
-          <textarea
-            className="w-full border rounded p-2"
-            rows={2}
-            value={editExample}
-            onChange={(e) => setEditExample(e.target.value)}
-            placeholder="Add your own example sentence"
-          />
-
-          <div className="flex gap-2">
-            <button
-              className="px-3 py-1 border rounded"
-              onClick={saveEdits}
-            >
-              Save
-            </button>
-
-            <button
-              className="px-3 py-1 text-muted-foreground"
-              onClick={() => setEditingCard(null)}
-            >
-              Cancel
-            </button>
-          </div>
+   {editingCard && (
+      <div
+        style={{
+          marginTop: 16,
+          border: "1px solid #e5e5e5",
+          borderRadius: 14,
+          padding: 14,
+          background: "white",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>
+          Editing: {editingCard.word}
         </div>
-      )}
 
+        <textarea
+          rows={3}
+          value={editDefinition}
+          onChange={(e) => setEditDefinition(e.target.value)}
+          placeholder="Edit definition"
+          style={{
+            width: "100%",
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 12,
+            marginBottom: 10,
+          }}
+        />
+
+        <textarea
+          rows={2}
+          value={editExample}
+          onChange={(e) => setEditExample(e.target.value)}
+          placeholder="Add your own example sentence"
+          style={{
+            width: "100%",
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 12,
+            marginBottom: 10,
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={saveEdits} style={{ padding: "10px 12px" }}>
+            Save
+          </button>
+          <button onClick={() => setEditingCard(null)} style={{ padding: "10px 12px", opacity: 0.8 }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
 
       {tab === "add" && (
         <section style={{ marginTop: 16 }}>
@@ -330,9 +394,45 @@ async function deleteCard(id: string) {
 
       {tab === "review" && (
         <section style={{ marginTop: 16 }}>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <button
+              onClick={() => { setReviewMode("due"); setReviewIndex(0); setRevealed(false); }}
+              style={{ padding: "8px 10px", opacity: reviewMode === "due" ? 1 : 0.6 }}
+            >
+              Due
+            </button>
+            <button
+              onClick={() => { setReviewMode("random"); setReviewIndex(0); setRevealed(false); }}
+              style={{ padding: "8px 10px", opacity: reviewMode === "random" ? 1 : 0.6 }}
+            >
+              Random
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <button onClick={() => setTestMode("flashcard")} style={{ padding: "8px 10px", opacity: testMode === "flashcard" ? 1 : 0.6 }}>
+              Flashcard
+            </button>
+            <button onClick={() => setTestMode("type")} style={{ padding: "8px 10px", opacity: testMode === "type" ? 1 : 0.6 }}>
+              Type definition
+            </button>
+            <button onClick={() => setTestMode("mcq")} style={{ padding: "8px 10px", opacity: testMode === "mcq" ? 1 : 0.6 }}>
+              Pick definition
+            </button>
+          </div>
+
           {(() => {
             const c = currentReviewCard();
-            if (!c) return <div style={{ opacity: 0.8 }}>Nothing due 🎉</div>;
+
+            if (!c) {
+              return (
+                <div style={{ opacity: 0.8 }}>
+                  {cards.length ? "Nothing due 🎉 Switch to Random?" : "No words saved yet."}
+                </div>
+              );
+            }
+
             return (
               <div style={{ border: "1px solid #F6F4F0", borderRadius: 14, padding: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -340,20 +440,106 @@ async function deleteCard(id: string) {
                   <div style={{ opacity: 0.7 }}>{c.part_of_speech ?? "—"}</div>
                 </div>
 
-                {!revealed ? (
-                  <div style={{ marginTop: 12, opacity: 0.8 }}>Tap reveal.</div>
-                ) : (
+                {testMode === "flashcard" && (
                   <>
-                    <div style={{ marginTop: 12 }}>{c.definition}</div>
-                    {c.example && <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.85 }}>“{c.example}”</div>}
+                    {!revealed ? (
+                      <div style={{ marginTop: 12, opacity: 0.8 }}>Tap reveal.</div>
+                    ) : (
+                      <>
+                        <div style={{ marginTop: 12 }}>{c.definition}</div>
+                        {c.example && <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.85 }}>“{c.example}”</div>}
+                      </>
+                    )}
                   </>
                 )}
 
-                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-                  <button onClick={() => setRevealed(true)} disabled={revealed}>Reveal</button>
-                  <button onClick={() => mark(true)} disabled={!revealed}>✅ Knew it</button>
-                  <button onClick={() => mark(false)} disabled={!revealed}>❌ Didn’t know</button>
-                </div>
+                {testMode === "type" && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ opacity: 0.8, marginBottom: 8 }}>Type what you think it means (rough is fine):</div>
+                    <textarea
+                      rows={3}
+                      value={typed}
+                      onChange={(e) => setTyped(e.target.value)}
+                      style={{ width: "100%", padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+                      placeholder="Your definition…"
+                    />
+                    {!revealed ? null : (
+                      <>
+                        <div style={{ marginTop: 12, fontWeight: 700 }}>Dictionary / saved definition</div>
+                        <div style={{ marginTop: 6 }}>{c.definition}</div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {testMode === "mcq" && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ opacity: 0.8, marginBottom: 10 }}>Pick the correct definition:</div>
+
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {mcqOptions.map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => setMcqChoiceId(opt.id)}
+                          disabled={mcqResult !== null} // lock after submit
+                          style={{
+                            textAlign: "left",
+                            padding: 12,
+                            borderRadius: 12,
+                            border: "1px solid #ddd",
+                            background: mcqChoiceId === opt.id ? "#f6f6f6" : "white",
+                            opacity: mcqResult !== null && mcqChoiceId !== opt.id ? 0.7 : 1,
+                          }}
+                        >
+                          {opt.definition}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => {
+                          if (!c || !mcqChoiceId) return;
+                          const correct = mcqChoiceId === c.id;
+                          setMcqResult(correct ? "correct" : "wrong");
+                          setRevealed(true);
+                        }}
+                        disabled={!mcqChoiceId || mcqResult !== null}
+                      >
+                        Submit
+                      </button>
+
+                      {mcqResult !== null && (
+                        <button
+                          onClick={async () => {
+                            // grade + schedule
+                            await mark(mcqResult === "correct");
+                          }}
+                        >
+                          Next
+                        </button>
+                      )}
+                    </div>
+
+                    {mcqResult === "correct" && <div style={{ marginTop: 10 }}>✅ Correct</div>}
+                    {mcqResult === "wrong" && (
+                      <div style={{ marginTop: 10 }}>
+                        ❌ Not quite
+                        <div style={{ marginTop: 6, opacity: 0.85 }}>
+                          Correct answer: <b>{c.definition}</b>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {testMode !== "mcq" && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                    <button onClick={() => setRevealed(true)} disabled={revealed}>Reveal</button>
+                    <button onClick={() => mark(true)} disabled={!revealed}>✅ Knew it</button>
+                    <button onClick={() => mark(false)} disabled={!revealed}>❌ Didn’t know</button>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -363,42 +549,42 @@ async function deleteCard(id: string) {
       {tab === "bank" && (
         <section style={{ marginTop: 16, display: "grid", gap: 10 }}>
           {cards.map((c) => (
-            <div key={c.id} className="border rounded-lg p-4 space-y-2">
-              <div className="flex justify-between items-start gap-4">
+            <div
+              key={c.id}
+              style={{
+                border: "1px solid #e5e5e5",
+                borderRadius: 14,
+                padding: 14,
+                background: "white",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  <div className="font-semibold text-lg">{c.word}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {c.part_of_speech}
+                  <div style={{ fontWeight: 800, fontSize: 18 }}>{c.word}</div>
+                  <div style={{ opacity: 0.7, marginTop: 2 }}>
+                    {c.part_of_speech ?? "—"}
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    className="text-sm underline"
-                    onClick={() => startEdit(c)}
-                  >
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => startEdit(c)} style={{ textDecoration: "underline" }}>
                     Edit
                   </button>
-
-                  <button
-                    className="text-sm text-red-600 underline"
-                    onClick={() => deleteCard(c.id)}
-                  >
+                  <button onClick={() => deleteCard(c.id)} style={{ color: "#b91c1c", textDecoration: "underline" }}>
                     Delete
                   </button>
                 </div>
               </div>
 
-              <div>{c.definition}</div>
+              <div style={{ marginTop: 10 }}>{c.definition}</div>
 
               {c.example && (
-                <div className="italic text-sm text-muted-foreground">
+                <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.85 }}>
                   “{c.example}”
                 </div>
               )}
             </div>
           ))}
-
         </section>
       )}
     </main>
