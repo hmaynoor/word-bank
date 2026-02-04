@@ -241,6 +241,7 @@ export default function Page() {
           email={email}
           setEmail={setEmail}
           signIn={signIn}
+          status={status}
         />
       </PageShell>
     );

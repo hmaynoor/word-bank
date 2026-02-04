@@ -7,10 +7,12 @@ export const LandingPage = ({
     email,
     setEmail,
     signIn, 
+    status,
 }: {  
     email: string;
     setEmail: (v: string) => void;
     signIn: () => void;
+    status?: string;
 }
   ) => (
         <div style={{ display: "flex", justifyContent: "center", paddingTop: 40 }}>
