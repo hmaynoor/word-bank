@@ -282,6 +282,40 @@ export default function Page() {
         )}
       </div>
 
+       {/* Editing panel */}
+          {editingCard && (
+            <div style={{ marginTop: 16 }}>
+              <Card style={{ boxShadow: UI.shadow }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, letterSpacing: 0.4 }}>Editing</div>
+                    <div style={{ marginTop: 6, fontSize: 22, fontWeight: 850, fontFamily: UI.fontSerif }}>
+                      {editingCard.word}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Button onClick={saveEdits} variant="primary">
+                      Save
+                    </Button>
+                    <Button onClick={() => setEditingCard(null)} variant="ghost">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, marginBottom: 6 }}>Definition</div>
+                  <Textarea rows={3} value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} />
+                </div>
+
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, marginBottom: 6 }}>Example</div>
+                  <Textarea rows={2} value={editExample} onChange={(e) => setEditExample(e.target.value)} placeholder="Add your own example sentence" />
+                </div>
+              </Card>
+            </div>
+          )}
+
       {/* ADD */}
       {tab === "add" && (
         <AddTab
@@ -325,42 +359,6 @@ export default function Page() {
         deleteCard={deleteCard}
       />
     )}
-
-
-      
-      {/* Editing panel */}
-      {editingCard && (
-        <div style={{ marginTop: 16 }}>
-          <Card style={{ boxShadow: UI.shadow }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, letterSpacing: 0.4 }}>Editing</div>
-                <div style={{ marginTop: 6, fontSize: 22, fontWeight: 850, fontFamily: UI.fontSerif }}>
-                  {editingCard.word}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Button onClick={saveEdits} variant="primary">
-                  Save
-                </Button>
-                <Button onClick={() => setEditingCard(null)} variant="ghost">
-                  Cancel
-                </Button>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, marginBottom: 6 }}>Definition</div>
-              <Textarea rows={3} value={editDefinition} onChange={(e) => setEditDefinition(e.target.value)} />
-            </div>
-
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, marginBottom: 6 }}>Example</div>
-              <Textarea rows={2} value={editExample} onChange={(e) => setEditExample(e.target.value)} placeholder="Add your own example sentence" />
-            </div>
-          </Card>
-        </div>
-      )}
 
     </PageShell>
   );
