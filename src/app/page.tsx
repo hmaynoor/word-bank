@@ -78,7 +78,7 @@ export default function Page() {
     if (!session) return;
     const { data, error } = await supabase.from("cards").select("*").order("created_at", { ascending: false });
     if (error) setStatus(error.message);
-    else setCards((data ?? []) as CardRow[]);
+    else setCards((data ?? []) as CardRow[]); 
   }
 
   useEffect(() => {
