@@ -1,8 +1,4 @@
-
-import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
-
-import {CardRow, Meaning} from "@/app/type";
+import {Meaning} from "@/app/type";
 import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
 import {Button} from "@/app/styles/buttonstyle";
 import {Input} from "@/app/styles/inputStyle";

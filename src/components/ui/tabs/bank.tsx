@@ -1,16 +1,12 @@
-import {CardRow, Meaning} from "@/app/type";
+import {CardRow} from "@/app/type";
 import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
 import {Button} from "@/app/styles/buttonstyle";
 
  export function BankTab({
-    word, 
-    setWord,
     cards,
     startEdit,
     deleteCard,
  }: {
-    word: string;
-    setWord: (s: string) => void;
     cards: CardRow[];
     startEdit: (c: CardRow) => void;
     deleteCard: (id: string) => void;

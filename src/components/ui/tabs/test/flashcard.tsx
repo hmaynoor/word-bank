@@ -1,5 +1,5 @@
-import {CardRow, Meaning} from "@/app/type";
-import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
+import {CardRow} from "@/app/type";
+import {UI} from "@/app/styles/userinterfacestyle";
 
 
 export function Flashcards({

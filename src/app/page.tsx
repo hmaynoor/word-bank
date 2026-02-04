@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 import {CardRow, Meaning} from "@/app/type";
-import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
+import {UI, Card} from "@/app/styles/userinterfacestyle";
 import {Button} from "@/app/styles/buttonstyle";
 import {Textarea} from "@/app/styles/textAreaStyle";
 import {PillTabs} from "@/app/styles/pilltabsStyle";
@@ -16,13 +16,15 @@ import { BankTab } from "@/components/ui/tabs/bank";
 import { AddTab } from "@/components/ui/tabs/add";
 import { ReviewTab } from "@/components/ui/tabs/review";
 
+import type { Session } from "@supabase/supabase-js";
+
 
 export default function Page() {
   /////////////////////////////////// 
   // States
   ///////////////////////////////////
 
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string>("");
 
@@ -32,7 +34,7 @@ export default function Page() {
   const [tab, setTab] = useState<"add" | "review" | "bank">("add");
 
   // Editing
-  const [editingCard, setEditingCard] = useState<any | null>(null);
+  const [editingCard, setEditingCard] = useState<CardRow | null>(null);
   const [editDefinition, setEditDefinition] = useState("");
   const [editExample, setEditExample] = useState("");
 
@@ -48,10 +50,6 @@ export default function Page() {
   const [mcqChoiceId, setMcqChoiceId] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [mcqResult, setMcqResult] = useState<"correct" | "wrong" | null>(null);
-
-  //Word Bank
-
-  const [definition, setDefintiion]  = useState<CardRow>();
 
 
   /////////////////////////////////// 
@@ -80,7 +78,7 @@ export default function Page() {
     if (!session) return;
     const { data, error } = await supabase.from("cards").select("*").order("created_at", { ascending: false });
     if (error) setStatus(error.message);
-    else setCards((data ?? []) as any);
+    else setCards((data ?? []) as CardRow[]);
   }
 
   useEffect(() => {
@@ -187,7 +185,7 @@ export default function Page() {
   }, [reviewIndex, reviewMode, testMode, cards.length, dueCards.length]);
 
     // Editing Pane Functions
-  function startEdit(card: any) {
+  function startEdit(card: CardRow) {
     setEditingCard(card);
     setEditDefinition(card.definition);
     setEditExample(card.example ?? "");
@@ -266,7 +264,7 @@ export default function Page() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
         <PillTabs
           value={tab}
-          onChange={(v) => setTab(v as any)}
+          onChange={setTab}
           items={[
             { value: "add", label: "Add" },
             { value: "review", label: "Review" },
@@ -321,8 +319,6 @@ export default function Page() {
       {/* BANK */}
      {tab === "bank" && (
       <BankTab
-        word={word}
-        setWord={setWord}
         cards={cards}
         startEdit={startEdit}
         deleteCard={deleteCard}

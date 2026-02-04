@@ -1,11 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
-
-import {CardRow, Meaning} from "@/app/type";
+import {CardRow} from "@/app/type";
 import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
-import {Button} from "@/app/styles/buttonstyle";
-import {Input} from "@/app/styles/inputStyle";
-import { doLookup } from "../functions/lookup";
 import { PillTabs } from "@/app/styles/pilltabsStyle";
 import { Flashcards } from "./test/flashcard";
 import { Type } from "@/components/ui/tabs/test/type";
@@ -72,7 +66,7 @@ export function ReviewTab({
         <PillTabs
             value={reviewMode}
             onChange={(v) => {
-            setReviewMode(v as any);
+            setReviewMode(v);
             setReviewIndex(0);
             setRevealed(false);
             }}
@@ -83,12 +77,12 @@ export function ReviewTab({
         />
         <PillTabs
             value={testMode}
-            onChange={(v) => setTestMode(v as any)}
+            onChange={setTestMode}
             items={[
-            { value: "flashcard", label: "Flashcard" },
-            { value: "type", label: "Type" },
-            { value: "mcq", label: "Pick" },
-            ]}
+                { value: "flashcard", label: "Flashcard" },
+                { value: "type", label: "Type" },
+                { value: "mcq", label: "Pick" },
+                ]}
         />
         </div>
 

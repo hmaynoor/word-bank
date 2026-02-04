@@ -1,4 +1,4 @@
-import { CardRow, Meaning } from "@/app/type";
+import { Meaning } from "@/app/type";
 
 export async function lookupWord(word: string): Promise<Meaning[]> {
   const cleaned = word.trim().toLowerCase();

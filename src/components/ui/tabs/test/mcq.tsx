@@ -1,9 +1,5 @@
-
-import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
-
-import {CardRow, Meaning} from "@/app/type";
-import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
+import {CardRow} from "@/app/type";
+import {UI, Chip} from "@/app/styles/userinterfacestyle";
 import {Button} from "@/app/styles/buttonstyle";
 
 export function MultipleChoice({

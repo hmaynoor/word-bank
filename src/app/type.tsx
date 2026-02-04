@@ -5,7 +5,7 @@ export type CardRow = {
   part_of_speech: string | null;
   definition: string;
   example: string | null;
-  synonyms: any | null;
+  synonyms: string[] | null;
   due_at: string;
   correct_streak: number;
 };

@@ -1,5 +1,5 @@
 
-import {UI, Card, Chip} from "@/app/styles/userinterfacestyle";
+import {UI} from "@/app/styles/userinterfacestyle";
   
   export const Button = ({
     children,
