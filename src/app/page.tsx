@@ -169,22 +169,52 @@ export default function Page() {
     setMcqChoiceId(null);
   }
 
-  useEffect(() => {
-    setTyped("");
-    setMcqOptions([]);
-    setMcqChoiceId(null);
-    setMcqResult(null);
-    setRevealed(false);
 
+  /////////////////////////////////// 
+  // Use Effects for Cars
+  ///////////////////////////////////
+
+  useEffect(() => {
+  setTyped("");
+  setMcqOptions([]);
+  setMcqChoiceId(null);
+  setMcqResult(null);
+  setRevealed(false);
+
+  const nextId = pickNextCardId();
+  setActiveCardId(nextId);
+
+  const c = nextId ? cards.find((x) => x.id === nextId) : null;
+  if (c && testMode === "mcq") buildMcqOptions(c)
+}, [reviewIndex, reviewMode, testMode]); 
+
+// If we have no active card, try to pick one.
+useEffect(() => {
+  if (!activeCardId) {
     const nextId = pickNextCardId();
     setActiveCardId(nextId);
+    return;
+  }
 
-    const c = nextId ? cards.find((x) => x.id === nextId) : null;
-    if (c && testMode === "mcq") buildMcqOptions(c);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewIndex, reviewMode, testMode, cards.length, dueCards.length]);
+  // If the active card no longer exists (deleted), pick again.
+  const exists = cards.some((c) => c.id === activeCardId);
+  if (!exists) {
+    const nextId = pickNextCardId();
+    setActiveCardId(nextId);
+    return;
+  }
 
-    // Editing Pane Functions
+  // If we're in "due" mode and the active card is no longer due, pick again.
+  if (reviewMode === "due") {
+    const stillDue = dueCards.some((c) => c.id === activeCardId);
+    if (!stillDue) {
+      const nextId = pickNextCardId();
+      setActiveCardId(nextId);
+    }
+  }
+  }, [cards, dueCards, reviewMode]); 
+
+  // Editing Pane Functions
   function startEdit(card: CardRow) {
     setEditingCard(card);
     setEditDefinition(card.definition);
@@ -227,9 +257,6 @@ export default function Page() {
     setEditingCard(null);
     await refreshCards();
   }
-
-
-
 
   /////////////////////////////////// 
   // Landing Page 
@@ -346,7 +373,7 @@ export default function Page() {
           setReviewIndex={setReviewIndex}
           testMode={testMode}
           setTestMode={setTestMode}
-          currentReviewCard={currentReviewCard}
+          currentReviewCard={currentReviewCard()}
           cards={cards}
          />
       )}

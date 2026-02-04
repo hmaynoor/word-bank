@@ -23,7 +23,7 @@ type ReviewTabProps = {
   cards: CardRow[];
 
   // current card (value, not function)
-  currentReviewCard: () => CardRow | null;
+  currentReviewCard: CardRow | null;
 
   // setters
   setRevealed: React.Dispatch<React.SetStateAction<boolean>>;
@@ -59,7 +59,7 @@ export function ReviewTab({
   cards,
 
 }: ReviewTabProps) {
-  const c = currentReviewCard();
+  const c = currentReviewCard;
       return(
        <section style={{ marginTop: 18 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
