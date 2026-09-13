@@ -51,6 +51,9 @@ export default function Page() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [mcqResult, setMcqResult] = useState<"correct" | "wrong" | null>(null);
 
+  // Production mode states
+  const [trainingMode, setTrainingMode] = useState<"recognition" | "production">("recognition");
+  const [productionCardId, setProductionCardId] = useState<string | null>(null);
 
   /////////////////////////////////// 
   // Functions
@@ -125,6 +128,17 @@ export default function Page() {
       const c = cards[Math.floor(Math.random() * cards.length)];
       return c?.id ?? null;
     }
+  }
+
+  function pickProductionCardId() {
+    if (!cards.length) return null;
+    const c = cards[Math.floor(Math.random() * cards.length)];
+    return c?.id ?? null;
+  }
+
+  function currentProductionCard() {
+    if (!productionCardId) return null;
+    return cards.find((c) => c.id === productionCardId) ?? null;
   }
 
   // Testing Functions
@@ -258,6 +272,13 @@ useEffect(() => {
     await refreshCards();
   }
 
+  useEffect(() => {
+    if (tab === "review" && trainingMode === "production" && !productionCardId) {
+      const nextId = pickProductionCardId();
+      setProductionCardId(nextId);
+    }
+  }, [tab, trainingMode]);
+
   /////////////////////////////////// 
   // Landing Page 
   ///////////////////////////////////
@@ -374,8 +395,13 @@ useEffect(() => {
           testMode={testMode}
           setTestMode={setTestMode}
           currentReviewCard={currentReviewCard()}
+          currentProductionCard={currentProductionCard()}
           cards={cards}
-         />
+          trainingMode={trainingMode}
+          setTrainingMode={setTrainingMode}
+          productionCardId={productionCardId}
+          setProductionCardId={setProductionCardId}
+        />
       )}
 
       {/* BANK */}

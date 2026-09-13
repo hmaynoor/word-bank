@@ -4,11 +4,13 @@ import { PillTabs } from "@/app/styles/pilltabsStyle";
 import { Flashcards } from "./test/flashcard";
 import { Type } from "@/components/ui/tabs/test/type";
 import { MultipleChoice, NonMultipleChoice } from "@/components/ui/tabs/test/mcq";
+import { ProductionTab } from "./production";
 
 
 type ReviewMode = "due" | "random";
 type TestMode = "flashcard" | "type" | "mcq";
 type McqResult = "correct" | "wrong" | null;
+type TrainingMode = "recognition" | "production";
 
 
 type ReviewTabProps = {
@@ -21,9 +23,12 @@ type ReviewTabProps = {
   reviewMode: ReviewMode;
   testMode: TestMode;
   cards: CardRow[];
+  trainingMode: TrainingMode;
+  productionCardId: string | null;
 
   // current card (value, not function)
   currentReviewCard: CardRow | null;
+  currentProductionCard: CardRow | null;
 
   // setters
   setRevealed: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,6 +38,8 @@ type ReviewTabProps = {
   setReviewMode: React.Dispatch<React.SetStateAction<ReviewMode>>;
   setReviewIndex: React.Dispatch<React.SetStateAction<number>>;
   setTestMode: React.Dispatch<React.SetStateAction<TestMode>>;
+  setTrainingMode: React.Dispatch<React.SetStateAction<TrainingMode>>;
+  setProductionCardId: React.Dispatch<React.SetStateAction<string | null>>;
 
   // action
   mark: (correct: boolean) => Promise<void>;
@@ -56,106 +63,144 @@ export function ReviewTab({
   testMode,
   setTestMode,
   currentReviewCard,
+  currentProductionCard,
   cards,
-
+  trainingMode,
+  setTrainingMode,
+  productionCardId,
+  setProductionCardId,
 }: ReviewTabProps) {
   const c = currentReviewCard;
-      return(
-       <section style={{ marginTop: 18 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+
+  return (
+    <section style={{ marginTop: 18 }}>
+      {/* Training Mode Toggle */}
+      <div style={{ marginBottom: 16 }}>
         <PillTabs
-            value={reviewMode}
-            onChange={(v) => {
-            setReviewMode(v);
-            setReviewIndex(0);
-            setRevealed(false);
-            }}
-            items={[
-            { value: "due", label: "Due" },
-            { value: "random", label: "Random" },
-            ]}
+          value={trainingMode}
+          onChange={(v) => {
+            setTrainingMode(v);
+            if (v === "recognition") {
+              setReviewIndex(0);
+              setRevealed(false);
+            }
+          }}
+          items={[
+            { value: "recognition", label: "Recognition" },
+            { value: "production", label: "Write" },
+          ]}
         />
-        <PillTabs
-            value={testMode}
-            onChange={setTestMode}
-            items={[
+      </div>
+
+      {/* RECOGNITION MODE */}
+      {trainingMode === "recognition" && (
+        <>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <PillTabs
+              value={reviewMode}
+              onChange={(v) => {
+                setReviewMode(v);
+                setReviewIndex(0);
+                setRevealed(false);
+              }}
+              items={[
+                { value: "due", label: "Due" },
+                { value: "random", label: "Random" },
+              ]}
+            />
+            <PillTabs
+              value={testMode}
+              onChange={setTestMode}
+              items={[
                 { value: "flashcard", label: "Flashcard" },
                 { value: "type", label: "Type" },
                 { value: "mcq", label: "Pick" },
-                ]}
-        />
-        </div>
+              ]}
+            />
+          </div>
 
-        <div style={{ marginTop: 14 }}>
-        {(() => {
-            if (!c) {
-            return (
-                <Card style={{ boxShadow: UI.shadow }}>
-                <div style={{ color: UI.muted, lineHeight: "22px" }}>
-                    {cards.length ? "Nothing due 🎉 Switch to Random?" : "No words saved yet."}
-                </div>
-                </Card>
-            );
-            }
-
-            return (
-            <Card style={{ boxShadow: UI.shadow }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                <div>
-                    <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, letterSpacing: 0.4 }}>Word</div>
-                    <div style={{ marginTop: 6, fontSize: 30, fontWeight: 900, fontFamily: UI.fontSerif, letterSpacing: -0.4 }}>
-                    {c.word}
+          <div style={{ marginTop: 14 }}>
+            {(() => {
+              if (!c) {
+                return (
+                  <Card style={{ boxShadow: UI.shadow }}>
+                    <div style={{ color: UI.muted, lineHeight: "22px" }}>
+                      {cards.length ? "Nothing due 🎉 Switch to Random?" : "No words saved yet."}
                     </div>
-                </div>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <Chip>{c.part_of_speech ?? "—"}</Chip>
-                </div>
-                </div>
+                  </Card>
+                );
+              }
 
-                {/* Flashcard */}
-                {testMode === "flashcard" && (
-                <Flashcards
-                    revealed={revealed}
-                    curr={c}
-                />
-                )}
+              return (
+                <Card style={{ boxShadow: UI.shadow }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: UI.muted, fontWeight: 750, letterSpacing: 0.4 }}>Word</div>
+                      <div style={{ marginTop: 6, fontSize: 30, fontWeight: 900, fontFamily: UI.fontSerif, letterSpacing: -0.4 }}>
+                        {c.word}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <Chip>{c.part_of_speech ?? "—"}</Chip>
+                    </div>
+                  </div>
 
-                {/* Type */}
-                {testMode === "type" && (
-                <Type
-                    revealed={revealed}
-                    curr={c}
-                    typed={typed}
-                    setTyped={setTyped}
-                />
-                )}
+                  {/* Flashcard */}
+                  {testMode === "flashcard" && (
+                    <Flashcards
+                      revealed={revealed}
+                      curr={c}
+                    />
+                  )}
 
-                {/* MCQ */}
-                {testMode === "mcq" && (
-                <MultipleChoice
-                    mcqOptions={mcqOptions}
-                    mcqChoiceId={mcqChoiceId}
-                    mcqResult={mcqResult}
-                    curr={c}
-                    setMcqChoiceId={setMcqChoiceId}
-                    setMcqResult={setMcqResult}
-                    setRevealed={setRevealed}
-                    mark={mark}
-                />
-                )}
+                  {/* Type */}
+                  {testMode === "type" && (
+                    <Type
+                      revealed={revealed}
+                      curr={c}
+                      typed={typed}
+                      setTyped={setTyped}
+                    />
+                  )}
 
-                {/* Actions (non-MCQ) */}
-                {testMode !== "mcq" && (
-                <NonMultipleChoice
-                    revealed={revealed}
-                    setRevealed={setRevealed}
-                    mark={mark}
-                />
-                )}
+                  {/* MCQ */}
+                  {testMode === "mcq" && (
+                    <MultipleChoice
+                      mcqOptions={mcqOptions}
+                      mcqChoiceId={mcqChoiceId}
+                      mcqResult={mcqResult}
+                      curr={c}
+                      setMcqChoiceId={setMcqChoiceId}
+                      setMcqResult={setMcqResult}
+                      setRevealed={setRevealed}
+                      mark={mark}
+                    />
+                  )}
 
-            </Card>
-            );
-        })()}
-        </div>
-    </section>)
-    };
+                  {/* Actions (non-MCQ) */}
+                  {testMode !== "mcq" && (
+                    <NonMultipleChoice
+                      revealed={revealed}
+                      setRevealed={setRevealed}
+                      mark={mark}
+                    />
+                  )}
+
+                </Card>
+              );
+            })()}
+          </div>
+        </>
+      )}
+
+      {/* PRODUCTION MODE */}
+      {trainingMode === "production" && (
+        <ProductionTab
+          currentCard={currentProductionCard}
+          cards={cards}
+          onNextWord={() => setProductionCardId(null)}
+        />
+      )}
+    </section>
+  );
+}
